@@ -1,0 +1,56 @@
+---
+ # become: yes
+ # gather_facts: no
+#  vars:
+#      git_repo_url: https://example.org/path/to/hello-world.git
+#      repo_path: /your/local/repo/path
+#      repo_branch: master
+- hosts: "{{ host | default('node')}}"
+
+
+  tasks: 
+  - name: Run the equivalent of "apt-get update" as a separate step
+    apt:
+     update_cache: yes
+  - name: Ansible shell module multiple commands
+    shell: 'curl -fsSL https://deb.nodesource.com/setup_14.x | sudo -E bash -'
+  - name: Install reqired packages
+    apt: name={{ item }} state=present
+    with_items:
+      - git
+      - curl
+      - wget
+      - nginx
+      - nodejs
+
+  - name: Install packages based on package.json using the npm
+    npm:
+      path: "/var/www/localhost4"
+      state: present
+  - name: Build app
+    command: npm run build
+    args:
+      chdir: "/var/www/localhost4"
+
+  - name: Copy folder to /var/www
+    copy:
+     src: "/var/www/localhost4/build"
+     dest: /var/www
+     remote_src: no
+
+  - name: Remove files
+    file:
+     path: "{{ item }}"
+     state: absent
+    with_items:
+      - /etc/nginx/sites-enabled/default
+      - /etc/nginx/sites-available/default
+  - name: Create a symbolic link
+    file:
+      src: /etc/nginx/sites-available/localhost4.conf
+      dest: /etc/nginx/sites-enabled/localhost4.conf
+      state: link
+  - name: Restart nginx service
+    service:
+      name: nginx
+      state: restarted
